@@ -70,11 +70,11 @@ const Header: React.FC = () => {
                   <span className="text-sm font-medium">{user.name}</span>
                 </div>
                 <Link to="/profile">
-                  <Button variant="ghost" size="sm">
+                  <Button variant="ghost" size="sm" title="Mon profil">
                     <Settings className="h-4 w-4" />
                   </Button>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={logout}>
+                <Button variant="ghost" size="sm" onClick={logout} title="Se déconnecter">
                   <LogOut className="h-4 w-4" />
                 </Button>
               </div>
