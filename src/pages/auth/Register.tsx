@@ -184,7 +184,7 @@ const Register: React.FC = () => {
                 <Checkbox
                   id="terms"
                   checked={acceptTerms}
-                  onCheckedChange={setAcceptTerms}
+                  onCheckedChange={(checked) => setAcceptTerms(checked === true)}
                 />
                 <Label htmlFor="terms" className="text-sm">
                   J'accepte les{' '}
