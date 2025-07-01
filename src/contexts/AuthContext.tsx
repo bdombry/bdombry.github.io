@@ -45,11 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Simulation d'authentification
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    if (email === 'admin@example.com' && password === 'admin123') {
+    // Benjamin Dombry comme admin
+    if (email === 'benjamin.dombry@admin.com' && password === 'admin123') {
       const adminUser = {
         id: '1',
-        email: 'admin@example.com',
-        name: 'Admin User',
+        email: 'benjamin.dombry@admin.com',
+        name: 'Benjamin Dombry',
         role: 'admin' as const
       };
       setUser(adminUser);
