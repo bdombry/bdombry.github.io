@@ -1,16 +1,24 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { tutorials } from '../data/mockData';
+import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
-import { ArrowLeft, Clock, Calendar, User, Play, BookOpen } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, User, Play, BookOpen, CheckCircle } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import { toast } from 'sonner';
 
 const TutorialDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
+  const { user, markTutorialAsCompleted, startTutorial, getUserTutorialProgress } = useAuth();
   const tutorial = tutorials.find(t => t.slug === slug);
+
+  useEffect(() => {
+    if (tutorial && user) {
+      startTutorial(tutorial.id);
+    }
+  }, [tutorial, user, startTutorial]);
 
   if (!tutorial) {
     return (
@@ -28,6 +36,19 @@ const TutorialDetail: React.FC = () => {
       </div>
     );
   }
+
+  const progress = user ? getUserTutorialProgress(tutorial.id) : null;
+  const isCompleted = progress?.status === 'completed';
+
+  const handleMarkAsCompleted = () => {
+    if (!user) {
+      toast.error('Veuillez vous connecter pour marquer ce tutoriel comme terminé');
+      return;
+    }
+
+    markTutorialAsCompleted(tutorial.id);
+    toast.success('Tutoriel marqué comme terminé ! 🎉');
+  };
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
@@ -74,6 +95,12 @@ const TutorialDetail: React.FC = () => {
             <Badge variant="outline">
               {tutorial.category.name}
             </Badge>
+            {isCompleted && (
+              <Badge className="bg-green-100 text-green-800">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                Terminé
+              </Badge>
+            )}
           </div>
 
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -179,9 +206,22 @@ const TutorialDetail: React.FC = () => {
               Retour aux tutoriels
             </Button>
           </Link>
-          <Button>
-            Marquer comme terminé
-          </Button>
+          {user && (
+            <Button 
+              onClick={handleMarkAsCompleted}
+              disabled={isCompleted}
+              className={isCompleted ? 'bg-green-600 hover:bg-green-600' : ''}
+            >
+              {isCompleted ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Terminé
+                </>
+              ) : (
+                'Marquer comme terminé'
+              )}
+            </Button>
+          )}
         </div>
       </div>
     </div>

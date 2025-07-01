@@ -8,12 +8,24 @@ interface User {
   role: 'user' | 'admin';
 }
 
+interface UserTutorialProgress {
+  tutorialId: string;
+  status: 'not_started' | 'in_progress' | 'completed';
+  progress: number;
+  completedAt?: string;
+  startedAt: string;
+}
+
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  userProgress: UserTutorialProgress[];
+  markTutorialAsCompleted: (tutorialId: string) => void;
+  startTutorial: (tutorialId: string) => void;
+  getUserTutorialProgress: (tutorialId: string) => UserTutorialProgress | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,15 +41,28 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userProgress, setUserProgress] = useState<UserTutorialProgress[]>([]);
 
   useEffect(() => {
     // Simuler la vérification de session au démarrage
     const storedUser = localStorage.getItem('user');
+    const storedProgress = localStorage.getItem('userProgress');
+    
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
+    if (storedProgress) {
+      setUserProgress(JSON.parse(storedProgress));
+    }
     setIsLoading(false);
   }, []);
+
+  // Sauvegarder le progrès dans localStorage quand il change
+  useEffect(() => {
+    if (userProgress.length > 0) {
+      localStorage.setItem('userProgress', JSON.stringify(userProgress));
+    }
+  }, [userProgress]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
@@ -98,8 +123,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem('user');
   };
 
+  const markTutorialAsCompleted = (tutorialId: string) => {
+    if (!user) return;
+
+    setUserProgress(prev => {
+      const existingProgress = prev.find(p => p.tutorialId === tutorialId);
+      
+      if (existingProgress) {
+        return prev.map(p => 
+          p.tutorialId === tutorialId 
+            ? { ...p, status: 'completed' as const, progress: 100, completedAt: new Date().toISOString() }
+            : p
+        );
+      } else {
+        return [
+          ...prev,
+          {
+            tutorialId,
+            status: 'completed' as const,
+            progress: 100,
+            completedAt: new Date().toISOString(),
+            startedAt: new Date().toISOString()
+          }
+        ];
+      }
+    });
+  };
+
+  const startTutorial = (tutorialId: string) => {
+    if (!user) return;
+
+    setUserProgress(prev => {
+      const existingProgress = prev.find(p => p.tutorialId === tutorialId);
+      
+      if (!existingProgress) {
+        return [
+          ...prev,
+          {
+            tutorialId,
+            status: 'in_progress' as const,
+            progress: 0,
+            startedAt: new Date().toISOString()
+          }
+        ];
+      }
+      return prev;
+    });
+  };
+
+  const getUserTutorialProgress = (tutorialId: string): UserTutorialProgress | null => {
+    return userProgress.find(p => p.tutorialId === tutorialId) || null;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, isLoading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      login, 
+      register, 
+      logout, 
+      isLoading, 
+      userProgress,
+      markTutorialAsCompleted,
+      startTutorial,
+      getUserTutorialProgress
+    }}>
       {children}
     </AuthContext.Provider>
   );
