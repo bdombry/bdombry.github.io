@@ -1,12 +1,55 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { tutorials } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { Tutorial } from '../types';
 import TutorialCard from '../components/tutorials/TutorialCard';
 import { Button } from '../components/ui/button';
 import { BookOpen, Users, Award, ArrowRight } from 'lucide-react';
 
 const Home: React.FC = () => {
+  const [tutorials, setTutorials] = useState<Tutorial[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadTutorials();
+  }, []);
+
+  const loadTutorials = async () => {
+    const { data, error } = await supabase
+      .from('tutorials')
+      .select(`
+        *,
+        categories:category_id (
+          id,
+          name,
+          slug,
+          description
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(3);
+
+    if (data && !error) {
+      const formattedTutorials: Tutorial[] = data.map(tutorial => ({
+        id: tutorial.id,
+        title: tutorial.title,
+        slug: tutorial.slug,
+        description: tutorial.description,
+        content: tutorial.content,
+        videoUrl: tutorial.video_url,
+        category: tutorial.categories || { id: '', name: 'Sans catégorie', slug: 'sans-categorie' },
+        createdAt: tutorial.created_at,
+        updatedAt: tutorial.updated_at,
+        duration: tutorial.duration,
+        difficulty: tutorial.difficulty,
+        tags: tutorial.tags || []
+      }));
+      setTutorials(formattedTutorials);
+    }
+    setIsLoading(false);
+  };
+
   const latestTutorials = tutorials.slice(0, 3);
 
   return (
@@ -82,9 +125,20 @@ const Home: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
-            {latestTutorials.map((tutorial) => (
-              <TutorialCard key={tutorial.id} tutorial={tutorial} />
-            ))}
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-20 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                </div>
+              ))
+            ) : (
+              latestTutorials.map((tutorial) => (
+                <TutorialCard key={tutorial.id} tutorial={tutorial} />
+              ))
+            )}
           </div>
 
           <div className="text-center">

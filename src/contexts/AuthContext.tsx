@@ -1,7 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User, Session } from '@supabase/supabase-js';
 
-interface User {
+interface UserProfile {
   id: string;
   email: string;
   name: string;
@@ -17,7 +19,7 @@ interface UserTutorialProgress {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: UserProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -39,136 +41,154 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<UserTutorialProgress[]>([]);
 
   useEffect(() => {
-    // Simuler la vérification de session au démarrage
-    const storedUser = localStorage.getItem('user');
-    const storedProgress = localStorage.getItem('userProgress');
-    
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    if (storedProgress) {
-      setUserProgress(JSON.parse(storedProgress));
-    }
-    setIsLoading(false);
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          // Fetch user profile from our profiles table
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (profile) {
+            setUser({
+              id: profile.id,
+              email: profile.email,
+              name: profile.name,
+              role: profile.role
+            });
+          }
+          
+          // Load user progress
+          loadUserProgress(session.user.id);
+        } else {
+          setUser(null);
+          setUserProgress([]);
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // The auth state change listener will handle this
+      } else {
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  // Sauvegarder le progrès dans localStorage quand il change
-  useEffect(() => {
-    if (userProgress.length > 0) {
-      localStorage.setItem('userProgress', JSON.stringify(userProgress));
+  const loadUserProgress = async (userId: string) => {
+    const { data: progress } = await supabase
+      .from('user_tutorials')
+      .select(`
+        *,
+        tutorials:tutorial_id (id, slug)
+      `)
+      .eq('user_id', userId);
+
+    if (progress) {
+      const formattedProgress = progress.map(p => ({
+        tutorialId: p.tutorial_id,
+        status: p.status,
+        progress: p.progress,
+        startedAt: p.started_at,
+        completedAt: p.completed_at
+      }));
+      setUserProgress(formattedProgress);
     }
-  }, [userProgress]);
+  };
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulation d'authentification
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Benjamin Dombry comme admin
-    if (email === 'benjamin.dombry@admin.com' && password === 'admin123') {
-      const adminUser = {
-        id: '1',
-        email: 'benjamin.dombry@admin.com',
-        name: 'Benjamin Dombry',
-        role: 'admin' as const
-      };
-      setUser(adminUser);
-      localStorage.setItem('user', JSON.stringify(adminUser));
-      setIsLoading(false);
-      return true;
-    } else if (email === 'user@example.com' && password === 'user123') {
-      const normalUser = {
-        id: '2',
-        email: 'user@example.com',
-        name: 'Normal User',
-        role: 'user' as const
-      };
-      setUser(normalUser);
-      localStorage.setItem('user', JSON.stringify(normalUser));
-      setIsLoading(false);
-      return true;
-    }
-    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
     setIsLoading(false);
-    return false;
+    return !error;
   };
 
   const register = async (name: string, email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     
-    // Simulation d'inscription
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const redirectUrl = `${window.location.origin}/`;
     
-    const newUser = {
-      id: Date.now().toString(),
+    const { error } = await supabase.auth.signUp({
       email,
-      name,
-      role: 'user' as const
-    };
-    
-    setUser(newUser);
-    localStorage.setItem('user', JSON.stringify(newUser));
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          name: name
+        }
+      }
+    });
+
     setIsLoading(false);
-    return true;
+    return !error;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('user');
+    setSession(null);
+    setUserProgress([]);
   };
 
-  const markTutorialAsCompleted = (tutorialId: string) => {
+  const markTutorialAsCompleted = async (tutorialId: string) => {
     if (!user) return;
 
-    setUserProgress(prev => {
-      const existingProgress = prev.find(p => p.tutorialId === tutorialId);
-      
-      if (existingProgress) {
-        return prev.map(p => 
-          p.tutorialId === tutorialId 
-            ? { ...p, status: 'completed' as const, progress: 100, completedAt: new Date().toISOString() }
-            : p
-        );
-      } else {
-        return [
-          ...prev,
-          {
-            tutorialId,
-            status: 'completed' as const,
-            progress: 100,
-            completedAt: new Date().toISOString(),
-            startedAt: new Date().toISOString()
-          }
-        ];
-      }
-    });
+    const { error } = await supabase
+      .from('user_tutorials')
+      .upsert({
+        user_id: user.id,
+        tutorial_id: tutorialId,
+        status: 'completed',
+        progress: 100,
+        completed_at: new Date().toISOString()
+      });
+
+    if (!error) {
+      // Reload progress
+      loadUserProgress(user.id);
+    }
   };
 
-  const startTutorial = (tutorialId: string) => {
+  const startTutorial = async (tutorialId: string) => {
     if (!user) return;
 
-    setUserProgress(prev => {
-      const existingProgress = prev.find(p => p.tutorialId === tutorialId);
-      
-      if (!existingProgress) {
-        return [
-          ...prev,
-          {
-            tutorialId,
-            status: 'in_progress' as const,
-            progress: 0,
-            startedAt: new Date().toISOString()
-          }
-        ];
+    const existingProgress = userProgress.find(p => p.tutorialId === tutorialId);
+    
+    if (!existingProgress) {
+      const { error } = await supabase
+        .from('user_tutorials')
+        .insert({
+          user_id: user.id,
+          tutorial_id: tutorialId,
+          status: 'in_progress',
+          progress: 0
+        });
+
+      if (!error) {
+        // Reload progress
+        loadUserProgress(user.id);
       }
-      return prev;
-    });
+    }
   };
 
   const getUserTutorialProgress = (tutorialId: string): UserTutorialProgress | null => {
