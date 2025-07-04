@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { tutorials } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { Tutorial } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -12,13 +13,68 @@ import { toast } from 'sonner';
 const TutorialDetail: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   const { user, markTutorialAsCompleted, startTutorial, getUserTutorialProgress } = useAuth();
-  const tutorial = tutorials.find(t => t.slug === slug);
+  const [tutorial, setTutorial] = useState<Tutorial | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadTutorial();
+  }, [slug]);
+
+  const loadTutorial = async () => {
+    if (!slug) return;
+    
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from('tutorials')
+      .select(`
+        *,
+        categories:category_id (
+          id,
+          name,
+          slug,
+          description
+        )
+      `)
+      .eq('slug', slug)
+      .single();
+
+    if (data && !error) {
+      const formattedTutorial: Tutorial = {
+        id: data.id,
+        title: data.title,
+        slug: data.slug,
+        description: data.description,
+        content: data.content,
+        videoUrl: data.video_url,
+        category: data.categories || { id: '', name: 'Sans catégorie', slug: 'sans-categorie' },
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        duration: data.duration,
+        difficulty: data.difficulty,
+        tags: data.tags || []
+      };
+      setTutorial(formattedTutorial);
+    }
+    
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (tutorial && user) {
       startTutorial(tutorial.id);
     }
   }, [tutorial, user, startTutorial]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-64 mb-4"></div>
+          <div className="h-4 bg-gray-200 rounded w-48"></div>
+        </div>
+      </div>
+    );
+  }
 
   if (!tutorial) {
     return (

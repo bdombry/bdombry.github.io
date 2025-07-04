@@ -1,6 +1,7 @@
 
-import React, { useState, useMemo } from 'react';
-import { tutorials, categories } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Tutorial, Category } from '../types';
 import TutorialCard from '../components/tutorials/TutorialCard';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -8,11 +9,66 @@ import { Badge } from '../components/ui/badge';
 import { Search, Filter, X } from 'lucide-react';
 
 const Tutorials: React.FC = () => {
+  const [tutorials, setTutorials] = useState<Tutorial[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const tutorialsPerPage = 6;
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    
+    // Load categories
+    const { data: categoriesData } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+
+    // Load tutorials
+    const { data: tutorialsData } = await supabase
+      .from('tutorials')
+      .select(`
+        *,
+        categories:category_id (
+          id,
+          name,
+          slug,
+          description
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (categoriesData) {
+      setCategories(categoriesData);
+    }
+
+    if (tutorialsData) {
+      const formattedTutorials: Tutorial[] = tutorialsData.map(tutorial => ({
+        id: tutorial.id,
+        title: tutorial.title,
+        slug: tutorial.slug,
+        description: tutorial.description,
+        content: tutorial.content,
+        videoUrl: tutorial.video_url,
+        category: tutorial.categories || { id: '', name: 'Sans catégorie', slug: 'sans-categorie' },
+        createdAt: tutorial.created_at,
+        updatedAt: tutorial.updated_at,
+        duration: tutorial.duration,
+        difficulty: tutorial.difficulty,
+        tags: tutorial.tags || []
+      }));
+      setTutorials(formattedTutorials);
+    }
+    
+    setIsLoading(false);
+  };
 
   const filteredTutorials = useMemo(() => {
     return tutorials.filter(tutorial => {
@@ -162,7 +218,17 @@ const Tutorials: React.FC = () => {
         </div>
 
         {/* Tutorials Grid */}
-        {currentTutorials.length > 0 ? (
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                <div className="h-20 bg-gray-200 rounded mb-4"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+              </div>
+            ))}
+          </div>
+        ) : currentTutorials.length > 0 ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-8">
               {currentTutorials.map((tutorial) => (

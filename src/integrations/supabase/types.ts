@@ -159,7 +159,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      promote_user_to_admin: {
+        Args: { user_email: string }
+        Returns: boolean
+      }
     }
     Enums: {
       tutorial_difficulty: "beginner" | "intermediate" | "advanced"

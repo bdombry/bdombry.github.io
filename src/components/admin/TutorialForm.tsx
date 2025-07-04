@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -28,14 +29,23 @@ const TutorialForm: React.FC<TutorialFormProps> = ({ tutorial, onClose }) => {
     tags: [] as string[]
   });
   const [newTag, setNewTag] = useState('');
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const categories = [
-    { id: '1', name: 'Développement Web' },
-    { id: '2', name: 'JavaScript' },
-    { id: '3', name: 'React' },
-    { id: '4', name: 'Node.js' },
-    { id: '5', name: 'Design' }
-  ];
+  useEffect(() => {
+    loadCategories();
+  }, []);
+
+  const loadCategories = async () => {
+    const { data } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+    
+    if (data) {
+      setCategories(data);
+    }
+  };
 
   useEffect(() => {
     if (tutorial) {
@@ -101,25 +111,56 @@ const TutorialForm: React.FC<TutorialFormProps> = ({ tutorial, onClose }) => {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validation
-    if (!formData.title || !formData.description || !formData.content) {
+    if (!formData.title || !formData.description || !formData.content || !formData.category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    // Simulation de sauvegarde
-    console.log('Sauvegarde du tutoriel:', formData);
-    
-    if (tutorial) {
-      toast.success('Tutoriel modifié avec succès !');
-    } else {
-      toast.success('Tutoriel créé avec succès !');
+    setIsLoading(true);
+
+    try {
+      const tutorialData = {
+        title: formData.title,
+        slug: formData.slug,
+        description: formData.description,
+        content: formData.content,
+        video_url: formData.videoUrl || null,
+        category_id: formData.category,
+        difficulty: formData.difficulty as 'beginner' | 'intermediate' | 'advanced',
+        duration: formData.duration ? parseInt(formData.duration) : null,
+        tags: formData.tags
+      };
+
+      if (tutorial) {
+        // Update existing tutorial
+        const { error } = await supabase
+          .from('tutorials')
+          .update(tutorialData)
+          .eq('id', tutorial.id);
+
+        if (error) throw error;
+        toast.success('Tutoriel modifié avec succès !');
+      } else {
+        // Create new tutorial
+        const { error } = await supabase
+          .from('tutorials')
+          .insert(tutorialData);
+
+        if (error) throw error;
+        toast.success('Tutoriel créé avec succès !');
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Error saving tutorial:', error);
+      toast.error('Erreur lors de la sauvegarde du tutoriel');
+    } finally {
+      setIsLoading(false);
     }
-    
-    onClose();
   };
 
   return (
@@ -271,8 +312,8 @@ const TutorialForm: React.FC<TutorialFormProps> = ({ tutorial, onClose }) => {
         <Button type="button" variant="outline" onClick={onClose}>
           Annuler
         </Button>
-        <Button type="submit">
-          {tutorial ? 'Modifier' : 'Créer'} le tutoriel
+        <Button type="submit" disabled={isLoading}>
+          {isLoading ? 'Sauvegarde...' : tutorial ? 'Modifier' : 'Créer'} le tutoriel
         </Button>
       </div>
     </form>
