@@ -21,18 +21,57 @@ const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Récupérer le hash de l'URL pour les tokens de réinitialisation
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get('access_token');
-    const refreshToken = hashParams.get('refresh_token');
+    // Gérer le lien de réinitialisation depuis l'URL
+    const handleAuthCallback = async () => {
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error('Erreur de session:', error);
+        setError('Lien de réinitialisation invalide ou expiré');
+        return;
+      }
+      
+      // Si pas de session valide, vérifier les paramètres d'URL
+      if (!data.session) {
+        // Vérifier les paramètres d'URL (hash et query)
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const queryParams = new URLSearchParams(window.location.search);
+        
+        const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
+        const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
+        const tokenHash = hashParams.get('token_hash') || queryParams.get('token_hash');
+        const type = hashParams.get('type') || queryParams.get('type');
+        
+        if (tokenHash && type === 'recovery') {
+          // Utiliser exchangeCodeForSession pour les tokens de récupération
+          try {
+            const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(tokenHash);
+            if (exchangeError) {
+              console.error('Erreur d\'échange de token:', exchangeError);
+              setError('Lien de réinitialisation invalide ou expiré');
+            }
+          } catch (err) {
+            console.error('Erreur lors de l\'échange de token:', err);
+            setError('Lien de réinitialisation invalide ou expiré');
+          }
+        } else if (accessToken && refreshToken) {
+          // Fallback pour les anciens tokens
+          try {
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken
+            });
+          } catch (err) {
+            console.error('Erreur de session:', err);
+            setError('Lien de réinitialisation invalide ou expiré');
+          }
+        } else {
+          setError('Lien de réinitialisation manquant ou invalide');
+        }
+      }
+    };
     
-    if (accessToken && refreshToken) {
-      // Définir la session avec les tokens
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken
-      });
-    }
+    handleAuthCallback();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
