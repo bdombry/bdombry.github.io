@@ -22,6 +22,7 @@ interface AuthContextType {
   user: UserProfile | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
+  resetPassword: (email: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
   userProgress: UserTutorialProgress[];
@@ -143,6 +144,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return !error;
   };
 
+  const resetPassword = async (email: string): Promise<boolean> => {
+    const redirectUrl = `${window.location.origin}/reset-password`;
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: redirectUrl
+    });
+
+    return !error;
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
@@ -200,6 +211,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       login, 
       register, 
+      resetPassword,
       logout, 
       isLoading, 
       userProgress,
