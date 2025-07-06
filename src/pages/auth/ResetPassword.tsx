@@ -21,9 +21,10 @@ const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Vérifier si nous avons les paramètres de réinitialisation
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    // Récupérer le hash de l'URL pour les tokens de réinitialisation
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get('access_token');
+    const refreshToken = hashParams.get('refresh_token');
     
     if (accessToken && refreshToken) {
       // Définir la session avec les tokens
@@ -32,7 +33,7 @@ const ResetPassword: React.FC = () => {
         refresh_token: refreshToken
       });
     }
-  }, [searchParams]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
