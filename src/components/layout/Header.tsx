@@ -9,6 +9,10 @@ const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const location = useLocation();
 
+  // Debug logs
+  console.log('Header - User state:', user);
+  console.log('Header - User exists:', !!user);
+
   const isActive = (path: string) => location.pathname === path;
 
   return (

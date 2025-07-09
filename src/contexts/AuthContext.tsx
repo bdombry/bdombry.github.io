@@ -47,6 +47,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [userProgress, setUserProgress] = useState<UserTutorialProgress[]>([]);
 
+  // Debug logs
+  console.log('AuthProvider - User:', user);
+  console.log('AuthProvider - Session:', session);
+  console.log('AuthProvider - IsLoading:', isLoading);
+
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
