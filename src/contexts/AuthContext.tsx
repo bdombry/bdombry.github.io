@@ -20,6 +20,7 @@ interface UserTutorialProgress {
 
 interface AuthContextType {
   user: UserProfile | null;
+  session: Session | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string) => Promise<boolean>;
   resetPassword: (email: string) => Promise<boolean>;
@@ -225,6 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   return (
     <AuthContext.Provider value={{ 
       user, 
+      session,
       login, 
       register, 
       resetPassword,

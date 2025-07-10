@@ -8,7 +8,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { BookOpen, User, LogOut, Settings, Shield } from 'lucide-react';
 
 const Header: React.FC = () => {
-  const { user, logout } = useAuth();
+  const { user, session, logout } = useAuth();
   const location = useLocation();
 
   // Debug logs
@@ -124,18 +124,27 @@ const Header: React.FC = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-2">
-                <Link to="/login">
-                  <Button variant="ghost" size="sm">
-                    Connexion
+              <>
+                {/* Si on a une session mais pas de profil utilisateur, on affiche quand même le bouton de déconnexion */}
+                {session && (
+                  <Button variant="ghost" size="sm" onClick={logout} title="Se déconnecter">
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Déconnexion
                   </Button>
-                </Link>
-                <Link to="/register">
-                  <Button size="sm">
-                    Inscription
-                  </Button>
-                </Link>
-              </div>
+                )}
+                <div className="flex items-center space-x-2">
+                  <Link to="/login">
+                    <Button variant="ghost" size="sm">
+                      Connexion
+                    </Button>
+                  </Link>
+                  <Link to="/register">
+                    <Button size="sm">
+                      Inscription
+                    </Button>
+                  </Link>
+                </div>
+              </>
             )}
           </div>
         </div>
