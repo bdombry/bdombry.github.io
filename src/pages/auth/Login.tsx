@@ -127,10 +127,9 @@ const Login: React.FC = () => {
 
             {/* Demo Credentials */}
             <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">Comptes de démonstration :</h4>
-              <div className="text-xs text-gray-600 space-y-1">
-                <p><strong>Admin :</strong> admin@example.com / admin123</p>
-                <p><strong>Utilisateur :</strong> user@example.com / user123</p>
+              <h4 className="text-sm font-medium text-gray-900 mb-2">Compte de test :</h4>
+              <div className="text-xs text-gray-600">
+                <p><strong>Admin :</strong> bdombry@normandiewebschool.fr / admin123</p>
               </div>
             </div>
           </CardContent>
