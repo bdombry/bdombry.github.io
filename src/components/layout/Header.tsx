@@ -126,24 +126,26 @@ const Header: React.FC = () => {
             ) : (
               <>
                 {/* Si on a une session mais pas de profil utilisateur, on affiche quand même le bouton de déconnexion */}
-                {session && (
+                {session && !user && (
                   <Button variant="ghost" size="sm" onClick={logout} title="Se déconnecter">
                     <LogOut className="h-4 w-4 mr-2" />
                     Déconnexion
                   </Button>
                 )}
-                <div className="flex items-center space-x-2">
-                  <Link to="/login">
-                    <Button variant="ghost" size="sm">
-                      Connexion
-                    </Button>
-                  </Link>
-                  <Link to="/register">
-                    <Button size="sm">
-                      Inscription
-                    </Button>
-                  </Link>
-                </div>
+                {!session && (
+                  <div className="flex items-center space-x-2">
+                    <Link to="/login">
+                      <Button variant="ghost" size="sm">
+                        Connexion
+                      </Button>
+                    </Link>
+                    <Link to="/register">
+                      <Button size="sm">
+                        Inscription
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </>
             )}
           </div>
