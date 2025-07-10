@@ -169,10 +169,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    console.log('Déconnexion en cours...');
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setUserProgress([]);
+    console.log('Déconnexion terminée');
   };
 
   const markTutorialAsCompleted = async (tutorialId: string) => {
