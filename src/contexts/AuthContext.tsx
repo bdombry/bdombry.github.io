@@ -58,20 +58,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       async (event, session) => {
         setSession(session);
         if (session?.user) {
+          console.log('Fetching profile for user ID:', session.user.id);
+          console.log('User email:', session.user.email);
+          
           // Fetch user profile from our profiles table
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', session.user.id)
             .single();
           
+          console.log('Profile query result:', { profile, profileError });
+          
           if (profile) {
+            console.log('Setting user profile:', profile);
             setUser({
               id: profile.id,
               email: profile.email,
               name: profile.name,
               role: profile.role
             });
+          } else {
+            console.log('No profile found for user');
+            setUser(null);
           }
           
           // Load user progress
