@@ -12,12 +12,16 @@ import { Plus, Edit, Trash2, Users, BookOpen, TrendingUp, Eye } from 'lucide-rea
 import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import TutorialForm from '../../components/admin/TutorialForm';
+import CategoryForm from '../../components/admin/CategoryForm';
 
 const AdminDashboard: React.FC = () => {
   const { user } = useAuth();
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTutorial, setEditingTutorial] = useState(null);
+  const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(null);
   const [tutorials, setTutorials] = useState<Tutorial[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [stats, setStats] = useState({
     totalTutorials: 0,
     totalUsers: 0,
@@ -49,6 +53,12 @@ const AdminDashboard: React.FC = () => {
       `)
       .order('created_at', { ascending: false });
 
+    // Load categories
+    const { data: categoriesData } = await supabase
+      .from('categories')
+      .select('*')
+      .order('name');
+
     // Load stats
     const { data: profilesData } = await supabase
       .from('profiles')
@@ -75,6 +85,10 @@ const AdminDashboard: React.FC = () => {
         tags: tutorial.tags || []
       }));
       setTutorials(formattedTutorials);
+    }
+
+    if (categoriesData) {
+      setCategories(categoriesData);
     }
 
     setStats({
@@ -127,6 +141,33 @@ const AdminDashboard: React.FC = () => {
   const handleFormClose = () => {
     setIsFormOpen(false);
     setEditingTutorial(null);
+    loadDashboardData(); // Reload data after form close
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategory(category);
+    setIsCategoryFormOpen(true);
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette catégorie ?')) {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', categoryId);
+
+      if (error) {
+        toast.error('Erreur lors de la suppression de la catégorie');
+      } else {
+        toast.success('Catégorie supprimée avec succès');
+        loadDashboardData(); // Reload data
+      }
+    }
+  };
+
+  const handleCategoryFormClose = () => {
+    setIsCategoryFormOpen(false);
+    setEditingCategory(null);
     loadDashboardData(); // Reload data after form close
   };
 
@@ -201,6 +242,94 @@ const AdminDashboard: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Gestion des catégories */}
+        <Card className="mb-8">
+          <CardHeader>
+            <div className="flex justify-between items-center">
+              <CardTitle>Gestion des catégories</CardTitle>
+              <Dialog open={isCategoryFormOpen} onOpenChange={setIsCategoryFormOpen}>
+                <DialogTrigger asChild>
+                  <Button onClick={() => setEditingCategory(null)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvelle catégorie
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>
+                      {editingCategory ? 'Modifier la catégorie' : 'Créer une nouvelle catégorie'}
+                    </DialogTitle>
+                  </DialogHeader>
+                  <CategoryForm 
+                    category={editingCategory} 
+                    onClose={handleCategoryFormClose}
+                  />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="space-y-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="animate-pulse">
+                    <div className="h-12 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nom</TableHead>
+                    <TableHead>Slug</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categories.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell className="font-medium">{category.name}</TableCell>
+                      <TableCell className="text-sm text-gray-600">{category.slug}</TableCell>
+                      <TableCell className="text-sm">
+                        {category.description ? 
+                          (category.description.length > 50 ? 
+                            category.description.substring(0, 50) + '...' : 
+                            category.description
+                          ) : 
+                          '-'
+                        }
+                      </TableCell>
+                      <TableCell>{new Date(category.created_at).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleEditCategory(category)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => handleDeleteCategory(category.id)}
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Gestion des tutoriels */}
         <Card>
