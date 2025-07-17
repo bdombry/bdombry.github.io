@@ -201,7 +201,7 @@ const TutorialDetail: React.FC = () => {
               </div>
               <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
                 <iframe
-                  src={tutorial.videoUrl}
+                  src={tutorial.videoUrl.replace('watch?v=', 'embed/').replace('youtube.com', 'youtube-nocookie.com')}
                   title={tutorial.title}
                   className="w-full h-full"
                   frameBorder="0"

@@ -145,7 +145,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loadUserProgress = async (userId: string) => {
-    const { data: progress } = await supabase
+    console.log('Loading user progress for:', userId);
+    const { data: progress, error } = await supabase
       .from('user_tutorials')
       .select(`
         *,
@@ -153,14 +154,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       `)
       .eq('user_id', userId);
 
+    console.log('User progress data:', progress, 'Error:', error);
+
     if (progress) {
       const formattedProgress = progress.map(p => ({
         tutorialId: p.tutorial_id,
         status: p.status,
-        progress: p.progress,
+        progress: p.progress || 0,
         startedAt: p.started_at,
         completedAt: p.completed_at
       }));
+      console.log('Formatted progress:', formattedProgress);
       setUserProgress(formattedProgress);
     }
   };
@@ -219,41 +223,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const markTutorialAsCompleted = async (tutorialId: string) => {
     if (!user) return;
 
-    const { error } = await supabase
+    console.log('Marking tutorial as completed:', tutorialId);
+    
+    const { data, error } = await supabase
       .from('user_tutorials')
       .upsert({
         user_id: user.id,
         tutorial_id: tutorialId,
         status: 'completed',
         progress: 100,
-        completed_at: new Date().toISOString()
-      });
+        completed_at: new Date().toISOString(),
+        started_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id,tutorial_id'
+      })
+      .select();
+
+    console.log('Upsert result:', data, 'Error:', error);
 
     if (!error) {
-      // Reload progress
-      loadUserProgress(user.id);
+      // Reload progress immediately
+      await loadUserProgress(user.id);
     }
   };
 
   const startTutorial = async (tutorialId: string) => {
     if (!user) return;
 
+    console.log('Starting tutorial:', tutorialId, 'Current progress:', userProgress);
     const existingProgress = userProgress.find(p => p.tutorialId === tutorialId);
     
     if (!existingProgress) {
-      const { error } = await supabase
+      console.log('No existing progress, creating new entry');
+      const { data, error } = await supabase
         .from('user_tutorials')
         .insert({
           user_id: user.id,
           tutorial_id: tutorialId,
           status: 'in_progress',
-          progress: 0
-        });
+          progress: 0,
+          started_at: new Date().toISOString()
+        })
+        .select();
+
+      console.log('Insert result:', data, 'Error:', error);
 
       if (!error) {
-        // Reload progress
-        loadUserProgress(user.id);
+        // Reload progress immediately
+        await loadUserProgress(user.id);
       }
+    } else {
+      console.log('Existing progress found:', existingProgress);
     }
   };
 

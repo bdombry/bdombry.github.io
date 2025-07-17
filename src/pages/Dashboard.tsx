@@ -1,7 +1,8 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { tutorials } from '../data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { Tutorial } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Progress } from '../components/ui/progress';
@@ -11,6 +12,47 @@ import { Link } from 'react-router-dom';
 
 const Dashboard: React.FC = () => {
   const { user, userProgress, getUserTutorialProgress } = useAuth();
+  const [tutorials, setTutorials] = useState<Tutorial[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    loadTutorials();
+  }, []);
+
+  const loadTutorials = async () => {
+    setIsLoading(true);
+    const { data: tutorialsData } = await supabase
+      .from('tutorials')
+      .select(`
+        *,
+        categories:category_id (
+          id,
+          name,
+          slug,
+          description
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (tutorialsData) {
+      const formattedTutorials: Tutorial[] = tutorialsData.map(tutorial => ({
+        id: tutorial.id,
+        title: tutorial.title,
+        slug: tutorial.slug,
+        description: tutorial.description,
+        content: tutorial.content,
+        videoUrl: tutorial.video_url,
+        category: tutorial.categories || { id: '', name: 'Sans catégorie', slug: 'sans-categorie' },
+        createdAt: tutorial.created_at,
+        updatedAt: tutorial.updated_at,
+        duration: tutorial.duration || 0,
+        difficulty: tutorial.difficulty,
+        tags: tutorial.tags || []
+      }));
+      setTutorials(formattedTutorials);
+    }
+    setIsLoading(false);
+  };
 
   // Calculs des vraies statistiques
   const completedTutorials = userProgress.filter(p => p.status === 'completed');

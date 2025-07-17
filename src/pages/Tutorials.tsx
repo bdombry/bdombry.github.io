@@ -72,7 +72,8 @@ const Tutorials: React.FC = () => {
 
   const filteredTutorials = useMemo(() => {
     return tutorials.filter(tutorial => {
-      const matchesSearch = tutorial.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      const matchesSearch = !searchTerm || 
+                           tutorial.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            tutorial.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            tutorial.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
       
@@ -81,7 +82,7 @@ const Tutorials: React.FC = () => {
       
       return matchesSearch && matchesCategory && matchesDifficulty;
     });
-  }, [searchTerm, selectedCategory, selectedDifficulty]);
+  }, [tutorials, searchTerm, selectedCategory, selectedDifficulty]);
 
   const totalPages = Math.ceil(filteredTutorials.length / tutorialsPerPage);
   const startIndex = (currentPage - 1) * tutorialsPerPage;
@@ -113,13 +114,13 @@ const Tutorials: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
           <div className="flex flex-col lg:flex-row gap-4 mb-4">
             {/* Search */}
-            <div className="flex-1 relative">
+            <div className="flex-1 relative min-w-96">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Rechercher un tutoriel..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
+                className="pl-10 w-full"
               />
             </div>
 
