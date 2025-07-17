@@ -56,37 +56,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         console.log('Auth state change:', event, session);
         setSession(session);
+        
         if (session?.user) {
           console.log('Fetching profile for user ID:', session.user.id);
           console.log('User email:', session.user.email);
           
-          // Fetch user profile from our profiles table
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          console.log('Profile query result:', { profile, profileError });
-          
-          if (profile) {
-            console.log('Setting user profile:', profile);
-            setUser({
-              id: profile.id,
-              email: profile.email,
-              name: profile.name,
-              role: profile.role
-            });
-          } else {
-            console.log('No profile found for user');
-            setUser(null);
-          }
-          
-          // Load user progress
-          loadUserProgress(session.user.id);
+          // Use setTimeout to avoid blocking the auth callback
+          setTimeout(async () => {
+            try {
+              const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', session.user.id)
+                .maybeSingle();
+              
+              console.log('Profile query result:', { profile, profileError });
+              
+              if (profileError) {
+                console.error('Error fetching profile:', profileError);
+                setUser(null);
+              } else if (profile) {
+                console.log('Setting user profile:', profile);
+                setUser({
+                  id: profile.id,
+                  email: profile.email,
+                  name: profile.name,
+                  role: profile.role
+                });
+                
+                // Load user progress
+                loadUserProgress(session.user.id);
+              } else {
+                console.log('No profile found for user, creating default profile');
+                // Create a default profile if none exists
+                const { data: newProfile, error: createError } = await supabase
+                  .from('profiles')
+                  .insert({
+                    id: session.user.id,
+                    email: session.user.email || '',
+                    name: session.user.user_metadata?.name || session.user.email?.split('@')[0] || 'User',
+                    role: 'user'
+                  })
+                  .select()
+                  .single();
+                
+                if (createError) {
+                  console.error('Error creating profile:', createError);
+                  setUser(null);
+                } else if (newProfile) {
+                  console.log('Created new profile:', newProfile);
+                  setUser({
+                    id: newProfile.id,
+                    email: newProfile.email,
+                    name: newProfile.name,
+                    role: newProfile.role
+                  });
+                  
+                  // Load user progress
+                  loadUserProgress(session.user.id);
+                }
+              }
+            } catch (error) {
+              console.error('Unexpected error in profile fetch:', error);
+              setUser(null);
+            }
+          }, 0);
         } else {
           setUser(null);
           setUserProgress([]);
